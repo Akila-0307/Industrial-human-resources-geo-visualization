@@ -9,7 +9,7 @@ import re
 import streamlit as st  
 
 st.title("Data Analysis Dashboard")
-st.sidebar.header("Upload CSV Files")
+#st.sidebar.header("Upload CSV Files")
 
 # Define folder path
 folderpath = os.path.join(os.path.dirname(__file__), "DataSets")

@@ -129,12 +129,12 @@ print("\nFirst few rows with the new Gender Ratio feature:")
 print(df[['India States', 'Gender_Ratio']].head())
 
 # Step 16: Save the cleaned and processed dataset to a new CSV file
-df.to_csv('cleaned_data.csv', index=False)
+#df.to_csv('cleaned_data.csv', index=False)
 
-#Step 17: Bonus Visualization - A Heatmap of Gender Distribution in Main Workers
-# A heatmap for visualizing gender differences across states (Main Workers)
-gender_data = df[['India States', 'Main Workers Total Males', 'Main Workers Total Females']].set_index('India States')
-plt.figure(figsize=(12,6))
-sns.heatmap(gender_data.T, annot=True, cmap='coolwarm', fmt='g', cbar=True)
-plt.title('Heatmap: Gender Distribution in Main Workers by State')
-plt.show()
+# #Step 17: Bonus Visualization - A Heatmap of Gender Distribution in Main Workers
+# # A heatmap for visualizing gender differences across states (Main Workers)
+# gender_data = df[['India States', 'Main Workers Total Males', 'Main Workers Total Females']].set_index('India States')
+# plt.figure(figsize=(12,6))
+# sns.heatmap(gender_data.T, annot=True, cmap='coolwarm', fmt='g', cbar=True)
+# plt.title('Heatmap: Gender Distribution in Main Workers by State')
+# plt.show()
