@@ -9,7 +9,6 @@ import re
 import streamlit as st  
 
 st.title("Data Analysis Dashboard")
-#st.sidebar.header("Upload CSV Files")
 
 # Define folder path
 folderpath = os.path.join(os.path.dirname(__file__), "DataSets")
@@ -42,7 +41,7 @@ st.write(df.isnull().sum())
 # Handle missing values
 df.fillna(0, inplace=True)
 
-# Convert numeric columns
+# Convert numeric columns safely
 df['Marginal Workers Total Persons'] = pd.to_numeric(df['Marginal Workers Total Persons'], errors='coerce')
 df.rename(columns={'Main Workers - Total - Persons': 'Main Workers Total Persons'}, inplace=True)
 
@@ -56,10 +55,16 @@ sns.barplot(x='India States', y='Marginal Workers Total Females', data=df, label
 ax.set_xlabel('States')
 ax.set_ylabel('Main Workers')
 ax.set_title('Main Workers by Gender')
-ax.set_xticklabels(ax.get_xticklabels(), rotation=90)
-ax.legend()
+
+# Fix tick labels issue
+ax.set_xticks(range(len(df['India States'])))  # Set fixed tick positions
+ax.set_xticklabels(df['India States'], rotation=90)
+
+# Fix legend location
+ax.legend(loc="upper right")
+
 plt.tight_layout()
-st.pyplot(fig)  # Display Matplotlib plot
+st.pyplot(fig)
 
 # **Choropleth Map**
 fig = px.choropleth(df, 
@@ -68,7 +73,7 @@ fig = px.choropleth(df,
                     hover_name='India States',
                     color_continuous_scale='Viridis',
                     title="State-wise Main Workers Distribution")
-st.plotly_chart(fig)  # Display Plotly chart
+st.plotly_chart(fig)
 
 # **Grouped Data**
 grouped_data = df.groupby('Division')['Main Workers Total Persons'].sum().reset_index()
@@ -82,8 +87,8 @@ st.write(df[['India States', 'Gender Ratio']].head())
 
 # **Heatmap: Gender Distribution**
 gender_data = df[['India States', 'Main Workers Total Males', 'Main Workers Total Females']].set_index('India States')
-fig, ax = plt.subplots(figsize=(12,6))
+fig, ax = plt.subplots(figsize=(12, 6))
 sns.heatmap(gender_data.T, annot=True, cmap='coolwarm', fmt='g', cbar=True, ax=ax)
 ax.set_title('Heatmap: Gender Distribution in Main Workers by State')
 plt.tight_layout()
-st.pyplot(fig)  # Display heatmap
+st.pyplot(fig)
