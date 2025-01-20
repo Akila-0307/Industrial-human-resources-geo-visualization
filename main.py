@@ -11,7 +11,7 @@ import re
 import streamlit as st  # Import Streamlit
 
 st.title("Data Analysis Dashboard")
-st.sidebar.header("Upload CSV Files")
+#st.sidebar.header("Upload CSV Files")
 
 # Define the folder path
 folderpath = os.path.join(os.path.dirname(__file__), "DataSets")
@@ -84,36 +84,63 @@ df.rename(columns={'Main Workers - Total - Persons': 'Main Workers Total Persons
 st.write("\nSummary statistics:")
 st.write(df.describe())
 
-fig, ax = plt.subplots(figsize=(10,6))
-sns.barplot(x='India States', y='Marginal Workers Total Males', data=df, label='Males', color='blue', ax=ax)
-sns.barplot(x='India States', y='Marginal Workers Total Females', data=df, label='Females', color='pink', ax=ax)
-ax.set_xlabel('States')
-ax.set_ylabel('Main Workers')
-ax.set_title('Main Workers by Gender')
-ax.set_xticklabels(ax.get_xticklabels(), rotation=90)
-ax.legend()
-st.pyplot(fig)
+# Step 12: Data visualization - Bar plot of Main Workers by Males vs Females across States
+plt.figure(figsize=(10,6))
+sns.barplot(x='India States', y='Marginal Workers Total Males', data=df, label='Males', color='blue')
+sns.barplot(x='India States', y='Marginal Workers Total Females', data=df, label='Females', color='pink')
 
+# Adding labels and title
+plt.xlabel('States')
+plt.ylabel('Main Workers')
+plt.title('Main Workers by Gender')
+plt.xticks(rotation=90)
+plt.legend()
+plt.show()
+
+# Step 13: Visualizing state-wise distribution of main workers using Plotly (interactive map)
 fig = px.choropleth(df, 
-                    locations='India States',
-                    color='Main Workers Total Persons',
-                    hover_name='India States',
-                    color_continuous_scale='Viridis',
-                    title="State-wise Main Workers Distribution")
-st.plotly_chart(fig)
+                    locations='India States',  # Column with state names
+                    color='Main Workers Total Persons',  # Column to use for color scale
+                    hover_name='India States',  # Information to show when hovering over a state
+                    color_continuous_scale='Viridis',  # Color scale for the map
+                    title="State-wise Main Workers Distribution")  # Title for the map
+fig.show()
 
+# Step 14: Grouping data by Division and calculating total number of main workers per division
 grouped_data = df.groupby('Division')['Main Workers Total Persons'].sum().reset_index()
-st.write("\nGrouped data by Division (total main workers):")
-st.write(grouped_data)
 
+# Display the grouped data
+print("\nGrouped data by Division (total main workers):")
+print(grouped_data)
+
+# Step 15: Feature Engineering - Adding a new feature for Gender Ratio (Males to Total Workers)
 df['Gender_Ratio'] = df['Main Workers Total Persons'] / (df['Main Workers Total Males'] + df['Main Workers Total Females'])
-st.write("\nFirst few rows with the new Gender Ratio feature:")
-st.write(df[['India States', 'Gender_Ratio']].head())
 
+# Display the new Gender Ratio feature for the first few rows
+print("\nFirst few rows with the new Gender Ratio feature:")
+print(df[['India States', 'Gender_Ratio']].head())
+
+# Step 16: Save the cleaned and processed dataset to a new CSV file
 df.to_csv('cleaned_data.csv', index=False)
 
+#Step 17: Bonus Visualization - A Heatmap of Gender Distribution in Main Workers
+# A heatmap for visualizing gender differences across states (Main Workers)
 gender_data = df[['India States', 'Main Workers Total Males', 'Main Workers Total Females']].set_index('India States')
-fig, ax = plt.subplots(figsize=(12,6))
-sns.heatmap(gender_data.T, annot=True, cmap='coolwarm', fmt='g', cbar=True, ax=ax)
-ax.set_title('Heatmap: Gender Distribution in Main Workers by State')
-st.pyplot(fig)
+plt.figure(figsize=(12,6))
+sns.heatmap(gender_data.T, annot=True, cmap='coolwarm', fmt='g', cbar=True)
+plt.title('Heatmap: Gender Distribution in Main Workers by State')
+plt.show()
+
+#Step 18: Exploring other workers' data, e.g., Marginal Workers
+# Bar plot comparing main vs marginal workers by gender
+plt.figure(figsize=(10,6))
+sns.barplot(x='India States', y='Marginal Workers Total Males', data=df, label='Males', color='green')
+sns.barplot(x='India States', y='Marginal Workers Total Females', data=df, label='Females', color='orange')
+
+# Adding labels and title
+plt.xlabel('States')
+plt.ylabel('Marginal Workers')
+plt.title('Marginal Workers by Gender')
+plt.xticks(rotation=90)
+plt.legend()
+plt.show()
