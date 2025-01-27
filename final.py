@@ -1,98 +1,105 @@
 import pandas as pd  
-import numpy as np  
 import plotly.express as px  
 import os
 import glob
 import re
 import streamlit as st  
-import io  # For handling df.info() output
 
 st.title("Data Analysis Dashboard")
 
 # Define folder path
 folderpath = os.path.join(os.path.dirname(__file__), "DataSets")
 
-# Load all CSV files efficiently
+# Load CSV files with optimization
 csv_files = glob.glob(os.path.join(folderpath, "*.csv"))
-dfs = [pd.read_csv(file, encoding='latin1', usecols=lambda col: col not in ['UnnecessaryColumn']) for file in csv_files]  # Adjust usecols as needed
+
+if not csv_files:
+    st.error("❌ No CSV files found in the 'DataSets' folder!")
+    st.stop()
+
+# Read only necessary columns if known
+dfs = []
+for file in csv_files:
+    try:
+        df_temp = pd.read_csv(file, encoding='latin1', low_memory=False)
+        dfs.append(df_temp)
+    except Exception as e:
+        st.error(f"❌ Error loading {file}: {e}")
+
+if not dfs:
+    st.error("❌ No valid CSV data found!")
+    st.stop()
+
 df = pd.concat(dfs, ignore_index=True)
 
-# Clean data efficiently
-df.replace({r'[^A-Za-z0-9 ]+': ''}, regex=True, inplace=True)
-
-# Clean column names
+# Convert column names to a cleaner format
 df.columns = [re.sub(r'[^A-Za-z0-9]+', ' ', col).strip().title() for col in df.columns]
 
-# Save cleaned data (optional)
-output_file = os.path.join(os.path.dirname(__file__), "cleaned_data.csv")
-df.to_csv(output_file, index=False)
+# Preview dataset
+st.write("✅ **First few rows:**")
+st.dataframe(df.head(50))  # Show only 50 rows instead of full table
 
-# Display data in Streamlit
-st.write("First few rows of the dataset:")
-st.write(df.head())
+# Memory-efficient column cleaning
+string_cols = df.select_dtypes(include=['object']).columns
+df[string_cols] = df[string_cols].astype(str).applymap(lambda x: re.sub(r'[^A-Za-z0-9 ]+', '', x).strip())
 
-# Display dataset info properly
-buffer = io.StringIO()
-df.info(buf=buffer)
-st.text(buffer.getvalue())
-
-# Display missing values
-st.write("Missing values in each column:")
+# Handling missing values
+st.write("🔍 **Missing Values per Column:**")
 st.write(df.isnull().sum())
 
-# Handle missing values
-df.fillna(0, inplace=True)
+df.fillna(0, inplace=True)  # Fill missing values efficiently
 
 # Convert numeric columns safely
-if 'Marginal Workers Total Persons' in df.columns:
-    df['Marginal Workers Total Persons'] = pd.to_numeric(df['Marginal Workers Total Persons'], errors='coerce')
+numeric_cols = ['Marginal Workers Total Persons', 'Main Workers - Total - Persons']
+for col in numeric_cols:
+    if col in df.columns:
+        df[col] = pd.to_numeric(df[col], errors='coerce')
 
+# Rename columns if necessary
 if 'Main Workers - Total - Persons' in df.columns:
     df.rename(columns={'Main Workers - Total - Persons': 'Main Workers Total Persons'}, inplace=True)
 
-# Summary statistics
-st.write("Summary statistics:")
-st.write(df.describe())
+# Generate summary statistics
+st.write("📊 **Summary Statistics:**")
+st.write(df.describe().transpose())  # Transpose for better readability
 
-# **Bar Plot: Male vs Female Workers** (Using Plotly instead of Matplotlib for better performance)
-if 'India States' in df.columns and 'Marginal Workers Total Males' in df.columns and 'Marginal Workers Total Females' in df.columns:
-    bar_fig = px.bar(df, 
-                     x='India States', 
-                     y=['Marginal Workers Total Males', 'Marginal Workers Total Females'], 
-                     title="Main Workers by Gender",
-                     labels={'value': 'Number of Workers', 'variable': 'Gender'},
-                     barmode='group',
-                     color_discrete_map={'Marginal Workers Total Males': 'blue', 'Marginal Workers Total Females': 'pink'})
-    st.plotly_chart(bar_fig)
+# **Bar Chart: Male vs Female Workers**
+try:
+    if {'India States', 'Marginal Workers Total Males', 'Marginal Workers Total Females'}.issubset(df.columns):
+        bar_fig = px.bar(df.sample(5000),  # Sample only 5000 rows for performance
+                         x='India States', 
+                         y=['Marginal Workers Total Males', 'Marginal Workers Total Females'], 
+                         title="Main Workers by Gender",
+                         labels={'value': 'Number of Workers', 'variable': 'Gender'},
+                         barmode='group')
+        st.plotly_chart(bar_fig)
+    else:
+        st.warning("⚠️ Required columns for the bar chart are missing!")
+except Exception as e:
+    st.error(f"❌ Error creating bar chart: {e}")
 
 # **Choropleth Map**
-if 'India States' in df.columns and 'Main Workers Total Persons' in df.columns:
-    choropleth_fig = px.choropleth(df, 
-                                   locations='India States',
-                                   color='Main Workers Total Persons',
-                                   hover_name='India States',
-                                   color_continuous_scale='Viridis',
-                                   title="State-wise Main Workers Distribution")
-    st.plotly_chart(choropleth_fig)
+try:
+    if {'India States', 'Main Workers Total Persons'}.issubset(df.columns):
+        choropleth_fig = px.choropleth(df.sample(5000),  # Sample for performance
+                                       locations='India States',
+                                       color='Main Workers Total Persons',
+                                       hover_name='India States',
+                                       color_continuous_scale='Viridis',
+                                       title="State-wise Main Workers Distribution")
+        st.plotly_chart(choropleth_fig)
+    else:
+        st.warning("⚠️ Required columns for the choropleth map are missing!")
+except Exception as e:
+    st.error(f"❌ Error creating choropleth map: {e}")
 
 # **Grouped Data**
-if 'Division' in df.columns and 'Main Workers Total Persons' in df.columns:
-    grouped_data = df.groupby('Division', as_index=False).agg({'Main Workers Total Persons': 'sum'})
-    st.write("Grouped Data by Division (Total Main Workers):")
-    st.write(grouped_data)
-
-# **Calculate Gender Ratio**
-if 'Main Workers Total Persons' in df.columns and 'Main Workers Total Males' in df.columns and 'Main Workers Total Females' in df.columns:
-    df['Gender Ratio'] = df['Main Workers Total Persons'] / (df['Main Workers Total Males'] + df['Main Workers Total Females'])
-    st.write("First few rows with Gender Ratio feature:")
-    st.write(df[['India States', 'Gender Ratio']].head())
-
-# **Heatmap: Gender Distribution** (Using Plotly for performance)
-if 'India States' in df.columns and 'Main Workers Total Males' in df.columns and 'Main Workers Total Females' in df.columns:
-    heatmap_fig = px.imshow(df[['Main Workers Total Males', 'Main Workers Total Females']].T, 
-                            labels=dict(x="States", y="Gender", color="Count"),
-                            x=df['India States'], 
-                            y=['Males', 'Females'],
-                            color_continuous_scale='coolwarm',
-                            title="Heatmap: Gender Distribution in Main Workers by State")
-    st.plotly_chart(heatmap_fig)
+try:
+    if {'Division', 'Main Workers Total Persons'}.issubset(df.columns):
+        grouped_data = df.groupby('Division', as_index=False).agg({'Main Workers Total Persons': 'sum'})
+        st.write("✅ **Grouped Data by Division:**")
+        st.write(grouped_data)
+    else:
+        st.warning("⚠️ 'Division' column is missing for grouping!")
+except Exception as e:
+    st.error(f"❌ Error grouping data: {e}")
